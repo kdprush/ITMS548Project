@@ -11,13 +11,13 @@ def fetch_crime_data():
     """
     # API endpoint for Chicago crime data
     url = "https://data.cityofchicago.org/resource/ijzp-q8t2.json"
-    
+
     # Parameters to limit the data to the 1000 most recent entries and order by ID descending
     params = {"$limit": 1000, "$order": ":id DESC"}
-    
+
     # Fetching data from the API
     response = requests.get(url, params=params)
-    
+
     # Checking if the request was successful and returning data accordingly
     return response.json() if response.status_code == 200 else []
 
@@ -31,10 +31,10 @@ def create_gui():
         """
         # Fetching new crime data
         new_data = fetch_crime_data()
-        
+
         # Clearing the treeview
         tree.delete(*tree.get_children())
-        
+
         # Inserting the new crime data into the treeview
         for i, record in enumerate(new_data, start=1):
             tree.insert("", "end", values=(
@@ -57,7 +57,7 @@ def create_gui():
     # Creating the main window
     root = tk.Tk()
     root.title("Chicago Crime Data")
-    
+
     # Making the window resizable
     root.resizable(True, True)
 

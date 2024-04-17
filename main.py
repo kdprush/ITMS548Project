@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import requests
+import webbrowser
 
 def fetch_crime_data():
     """
@@ -46,6 +47,13 @@ def create_gui():
                 record["primary_type"]
             ))
 
+    def open_chicago_map():
+        """
+        Function to open the City of Chicago's Crime Map in the default web browser.
+        """ 
+        crime_map_url = "https://data.cityofchicago.org/Public-Safety/Crimes-Map/dfnk-7re6"
+        webbrowser.open(crime_map_url)      
+
     # Creating the main window
     root = tk.Tk()
     root.title("Chicago Crime Data")
@@ -80,6 +88,10 @@ def create_gui():
     update_button = tk.Button(root, text="Update", command=update_data, width=10, height=2)
     update_button.pack()
 
+    # Adding a button to open the Chicago map
+    map_button = tk.Button(root, text="Open Chicago Map", command=open_chicago_map, width=20, height=2)
+    map_button.pack()
+
     # Set window to appear in front of other tasks
     root.attributes("-topmost", True)
 
@@ -92,3 +104,5 @@ def create_gui():
 if __name__ == "__main__":
     # Calling the function to create the GUI
     create_gui()
+
+

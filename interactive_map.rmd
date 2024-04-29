@@ -1,0 +1,169 @@
+---
+title: "ITMS 448 Final Project Crime Data"
+author: "Kat Prush"
+date: "2024-04-24"
+runtime: shiny
+output: 
+  html_document:
+    self_contained: true
+---
+
+  
+```{r setup, include=FALSE}
+# Set CRAN repository and load required packages
+options(repos = c(CRAN = "https://cran.rstudio.com"))
+packages <- c("ggplot2", "MASS", "leaps", "caret", "sf", "leaflet", "dplyr", "tidyr", "htmlwidgets", "shiny", "readr")
+new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
+if(length(new_packages)) install.packages(new_packages)
+
+library(shiny)
+library(leaflet)
+library(dplyr)
+library(sf)
+library(tidyr)
+library(htmlwidgets)
+library(readr)
+
+```
+
+```{r}
+# Load and preprocess data
+crime_data <- read.csv("/Users/Test/Downloads/Crimes_-_Map.csv")
+names(crime_data) <- trimws(names(crime_data))
+crime_data <- crime_data %>%
+  mutate(
+    LONGITUDE = as.numeric(LONGITUDE),
+    LATITUDE = as.numeric(LATITUDE)
+  ) %>%
+  filter(!is.na(LONGITUDE) & !is.na(LATITUDE))
+
+# Convert to a spatial data frame for Leaflet
+crime_data_sf <- st_as_sf(crime_data, coords = c("LONGITUDE", "LATITUDE"), crs = 4326, agr = "constant")
+
+# Normalize the PRIMARY.DESCRIPTION for consistent matching
+crime_data$`PRIMARY.DESCRIPTION` <- tolower(trimws(crime_data$`PRIMARY.DESCRIPTION`))
+crime_types_vector <- unique(crime_data$`PRIMARY.DESCRIPTION`)
+
+# Convert the vector to a named list globally
+crime_types_list <- setNames(as.list(crime_types_vector), crime_types_vector)
+
+# Assign names for the color palette using the list globally
+crime_color_palette <- setNames(rainbow(length(crime_types_list)), names(crime_types_list))
+
+# Debug: print the color palette and crime types to see the mapping
+print(crime_color_palette)
+print(names(crime_types_list))
+
+
+```
+
+```{r}
+# UI and Server setup together
+ui <- fluidPage(
+  titlePanel("Crime Data Analysis"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("crimeCategory", "Select Crime Category:", choices = NULL),
+      uiOutput("crimeTypeDropdown"),
+      checkboxInput("arrestMade", "Only show crimes that led to an arrest", FALSE)
+    ),
+    mainPanel(
+      leafletOutput("map"),
+      textOutput("selected_crime")
+    )
+  )
+)
+
+server <- function(input, output, session) {
+  # Define crime categories
+  crime_categories <- list(
+    "Crimes Against Persons" = c("assault", "battery", "sex offense", "criminal sexual assault", "homicide",
+                                 "kidnapping", "intimidation", "robbery", "stalking"),
+    "Crimes Against Society" = c("narcotics", "weapons violation", "deceptive practice", "criminal trespass",
+                                 "public peace violation", "liquor law violation", "concealed carry license violation",
+                                 "gambling", "prostitution", "obscenity", "public indecency", "human trafficking",
+                                 "other narcotic violation", "interference with public officer"),
+    "Crimes Against Property" = c("motor vehicle theft", "criminal damage", "theft", "burglary", "arson", "non-criminal")
+  )
+  
+  # Update category selection input
+  updateSelectInput(session, "crimeCategory", choices = names(crime_categories))
+  # Load and preprocess data
+  crime_data <- read.csv("/Users/Test/Downloads/Crimes_-_Map.csv")
+  crime_data <- crime_data %>%
+    mutate(
+      `PRIMARY.DESCRIPTION` = tolower(trimws(`PRIMARY.DESCRIPTION`)),
+      Category = sapply(`PRIMARY.DESCRIPTION`, function(desc) {
+        if (desc %in% crime_categories[["Crimes Against Persons"]]) {
+          "Crimes Against Persons"
+        } else if (desc %in% crime_categories[["Crimes Against Society"]]) {
+          "Crimes Against Society"
+        } else if (desc %in% crime_categories[["Crimes Against Property"]]) {
+          "Crimes Against Property"
+        } else {
+          NA  # or another default category if appropriate
+        }
+      }),
+      LONGITUDE = as.numeric(LONGITUDE),
+      LATITUDE = as.numeric(LATITUDE)
+    ) %>%
+    filter(!is.na(LONGITUDE) & !is.na(LATITUDE) & !is.na(Category))
+  
+  # Dynamic UI for selecting crime types based on category
+  output$crimeTypeDropdown <- renderUI({
+    selectInput("crimeType", "Choose Crime Type:", choices = crime_categories[[input$crimeCategory]])
+  })
+  
+  
+  # Filtered data based on inputs
+  filtered_data <- reactive({
+    req(input$crimeCategory, input$crimeType)
+    data <- crime_data %>%
+      filter(Category == input$crimeCategory, `PRIMARY.DESCRIPTION` == input$crimeType)
+    if (input$arrestMade) {
+      data <- data %>% filter(ARREST == "Y")
+    }
+    data
+  })
+  
+  # Render the map
+  output$map <- renderLeaflet({
+    data <- req(filtered_data())
+    leaflet(data) %>%
+      addTiles() %>%
+      addCircleMarkers(
+        layerId = ~`CASE.`,
+        popup = ~paste(`PRIMARY.DESCRIPTION`, `SECONDARY.DESCRIPTION`, sep = "<br/>"),
+        radius = 5,
+        color = ~ifelse(Category == "Crimes Against Persons", "red",
+                        ifelse(Category == "Crimes Against Society", "blue", "green")),
+        stroke = FALSE,
+        fillOpacity = 0.8
+      )
+  })
+  
+  # Observe map marker click events
+  observeEvent(input$map_marker_click, {
+    event <- input$map_marker_click
+    case_number <- event$id
+    crime_info <- filtered_data() %>%
+      filter(`CASE.` == case_number) %>%
+      select(`PRIMARY.DESCRIPTION`, `SECONDARY.DESCRIPTION`, `DATE..OF.OCCURRENCE`, BLOCK)
+    output$selected_crime <- renderPrint({
+      if (nrow(crime_info) > 0) {
+        paste("Crime: ", crime_info$`PRIMARY.DESCRIPTION`, "",
+              "Details: ", crime_info$`SECONDARY.DESCRIPTION`, "\n",
+              "Date: ", crime_info$`DATE..OF.OCCURRENCE`, "\n",
+              "Location: ", crime_info$BLOCK, "\n")
+      } else {
+        "No data available."
+      }
+    })
+  })
+}
+
+
+#Run ShinyApp
+shinyApp(ui, server)
+
+```

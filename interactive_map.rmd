@@ -7,7 +7,6 @@ output:
   html_document:
     self_contained: true
 ---
-
   
 ```{r setup, include=FALSE}
 # Set CRAN repository and load required packages
@@ -164,6 +163,6 @@ server <- function(input, output, session) {
 
 
 #Run ShinyApp
-shinyApp(ui, server)
+shinyApp(ui, server, options = list(port = 3838))
 
 ```

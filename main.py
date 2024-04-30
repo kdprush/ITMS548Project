@@ -48,15 +48,20 @@ def create_gui():
             ))
 
     def open_chicago_map():
-        """
-        Function to open the City of Chicago's Crime Map in the default web browser.
+        """default web browser.
         """ 
         crime_map_url = "https://data.cityofchicago.org/Public-Safety/Crimes-Map/dfnk-7re6"
-        webbrowser.open(crime_map_url)      
+        webbrowser.open(crime_map_url)
+
+    def open_shiny_app():
+        # URL where your Shiny app is hosted
+        url = 'http://localhost:3838'
+        webbrowser.open_new(url)      
 
     # Creating the main window
     root = tk.Tk()
     root.title("Chicago Crime Data")
+    root.geometry(f"{root.winfo_screenwidth() // 2}x{root.winfo_screenheight() // 2}")
 
     # Making the window resizable
     root.resizable(True, True)
@@ -89,7 +94,7 @@ def create_gui():
     update_button.pack()
 
     # Adding a button to open the Chicago map
-    map_button = tk.Button(root, text="Open Chicago Map", command=open_chicago_map, width=20, height=2)
+    map_button = tk.Button(root, text="Open Chicago Map", command=open_shiny_app, width=20, height=2)
     map_button.pack()
 
     # Set window to appear in front of other tasks
@@ -101,8 +106,19 @@ def create_gui():
     # Running the main event loop
     root.mainloop()
 
+  
+
+    # Create a button that will open the Shiny app
+    open_button = tk.Button(root, text="Open R Shiny App", command=open_shiny_app)
+    open_button.pack(pady=20)
+
+
+
 if __name__ == "__main__":
     # Calling the function to create the GUI
     create_gui()
+
+
+
 
 
